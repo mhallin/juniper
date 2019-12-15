@@ -47,3 +47,4 @@ uuid = { version = ">= 0.7, < 0.8", optional = true }
 [dev-dependencies]
 bencher = "0.1.2"
 serde_json = { version = "1.0.2" }
+assert-json-diff = "1.0.1"

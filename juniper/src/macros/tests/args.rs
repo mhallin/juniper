@@ -52,84 +52,73 @@ impl Root {
         0
     }
 
-    #[graphql(arguments(arg(description = "The arg")))]
-    fn single_arg_descr(arg: i32) -> i32 {
+    fn single_arg_descr(#[graphql(description = "The arg")] arg: i32) -> i32 {
         0
     }
 
-    #[graphql(arguments(
-        arg1(description = "The first arg",),
-        arg2(description = "The second arg")
-    ))]
-    fn multi_args_descr(arg1: i32, arg2: i32) -> i32 {
+    fn multi_args_descr(
+        #[graphql(description = "The first arg")] arg1: i32,
+        #[graphql(description = "The second arg")] arg2: i32,
+    ) -> i32 {
         0
     }
 
-    #[graphql(arguments(
-        arg1(description = "The first arg",),
-        arg2(description = "The second arg")
-    ))]
-    fn multi_args_descr_trailing_comma(arg1: i32, arg2: i32) -> i32 {
+    fn multi_args_descr_trailing_comma(
+        #[graphql(description = "The first arg")] arg1: i32,
+        #[graphql(description = "The second arg")] arg2: i32,
+    ) -> i32 {
         0
     }
 
-    // TODO: enable once [RFC 2565](https://github.com/rust-lang/rust/issues/60406) is implemented
-    // fn attr_arg_descr(#[doc = "The arg"] arg: i32) -> i32 { 0 }
-    // fn attr_arg_descr_collapse(
-    //     #[doc = "The arg"]
-    //     #[doc = "and more details"]
-    //     arg: i32,
-    // ) -> i32 { 0 }
-
-    #[graphql(arguments(arg(default = 123,),))]
-    fn arg_with_default(arg: i32) -> i32 {
+    fn arg_with_default(#[graphql(default = 123)] arg: i32) -> i32 {
         0
     }
 
-    #[graphql(arguments(arg1(default = 123,), arg2(default = 456,)))]
-    fn multi_args_with_default(arg1: i32, arg2: i32) -> i32 {
+    fn multi_args_with_default(
+        #[graphql(default = 123)] arg1: i32,
+        #[graphql(default = 456)] arg2: i32,
+    ) -> i32 {
         0
     }
 
-    #[graphql(arguments(arg1(default = 123,), arg2(default = 456,),))]
-    fn multi_args_with_default_trailing_comma(arg1: i32, arg2: i32) -> i32 {
+    fn multi_args_with_default_trailing_comma(
+        #[graphql(default = 123)] arg1: i32,
+        #[graphql(default = 456)] arg2: i32,
+    ) -> i32 {
         0
     }
 
-    #[graphql(arguments(arg(default = 123, description = "The arg")))]
-    fn arg_with_default_descr(arg: i32) -> i32 {
+    fn arg_with_default_descr(#[graphql(default = 123, description = "The arg")] arg: i32) -> i32 {
         0
     }
 
-    #[graphql(arguments(
-        arg1(default = 123, description = "The first arg"),
-        arg2(default = 456, description = "The second arg")
-    ))]
-    fn multi_args_with_default_descr(arg1: i32, arg2: i32) -> i32 {
+    fn multi_args_with_default_descr(
+        #[graphql(default = 123, description = "The first arg")] arg1: i32,
+        #[graphql(default = 456, description = "The second arg")] arg2: i32,
+    ) -> i32 {
         0
     }
 
-    #[graphql(arguments(
-        arg1(default = 123, description = "The first arg",),
-        arg2(default = 456, description = "The second arg",)
-    ))]
-    fn multi_args_with_default_trailing_comma_descr(arg1: i32, arg2: i32) -> i32 {
+    fn multi_args_with_default_trailing_comma_descr(
+        #[graphql(default = 123, description = "The first arg")] arg1: i32,
+        #[graphql(default = 456, description = "The second arg")] arg2: i32,
+    ) -> i32 {
         0
     }
 
-    #[graphql(
-        arguments(
-            arg1(
-                default = "test".to_string(),
-                description = "A string default argument",
-            ),
-            arg2(
-                default = Point{ x: 1 },
-                description = "An input object default argument",
-            )
-        ),
-    )]
-    fn args_with_complex_default(arg1: String, arg2: Point) -> i32 {
+    fn args_with_complex_default(
+        #[graphql(
+            default = "test".to_string(),
+            description = "A string default argument",
+        )]
+        arg1: String,
+
+        #[graphql(
+            default = Point{ x: 1 },
+            description = "An input object default argument",
+        )]
+        arg2: Point,
+    ) -> i32 {
         0
     }
 }

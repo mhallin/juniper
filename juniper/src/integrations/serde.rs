@@ -450,7 +450,8 @@ mod tests {
             to_string(&ExecutionError::at_origin(FieldError::new(
                 "foo error",
                 Value::Object(obj),
-            ))).unwrap(),
+            )))
+            .unwrap(),
             r#"{"message":"foo error","locations":[{"line":1,"column":1}],"path":[],"extensions":{"foo":"bar"}}"#
         );
     }

@@ -52,7 +52,8 @@ fn no_allowed_error_message(field_name: &str, type_name: &str) -> String {
 fn required_error_message(field_name: &str, type_name: &str) -> String {
     format!(
         r#"Field "{}" of type "{}" must have a selection of subfields. Did you mean "{} {{ ... }}"?"#,
-        field_name, type_name, field_name)
+        field_name, type_name, field_name
+    )
 }
 
 #[cfg(test)]

@@ -17,6 +17,7 @@ mod impl_object;
 mod util;
 
 use proc_macro::TokenStream;
+use proc_macro_error::*;
 
 #[proc_macro_derive(GraphQLEnum, attributes(graphql))]
 pub fn derive_enum(input: TokenStream) -> TokenStream {
@@ -289,25 +290,24 @@ impl InternalQuery {
     fn deprecated_field_simple() -> bool { true }
 
 
-    // Customizing field arguments is a little awkward right now.
-    // This will improve once [RFC 2564](https://github.com/rust-lang/rust/issues/60406)
-    // is implemented, which will allow attributes on function parameters.
+    // Customizing field arguments can be done like so:
+    fn args(
+        #[graphql(
+            description = "Argument description....",
 
-    #[graphql(
-        arguments(
-            arg1(
-                // You can specify default values.
-                // A default can be any valid expression that yields the right type.
-                default = true,
-                description = "Argument description....",
-            ),
-            arg2(
-                default = false,
-                description = "arg2 description...",
-            ),
-        ),
-    )]
-    fn args(arg1: bool, arg2: bool) -> bool {
+            // You can specify default values.
+            // A default can be any valid expression that yields the right type.
+            default = true,
+
+            // You can also give the argument a different name in your GraphQL schema
+            name = newName
+        )] arg1: bool,
+
+        #[graphql(
+            description = "arg2 description...",
+            default = false,
+        )] arg2: bool,
+    ) -> bool {
         arg1 && arg2
     }
 }
@@ -372,6 +372,7 @@ impl User {
 
 */
 #[proc_macro_attribute]
+#[proc_macro_error]
 pub fn object(args: TokenStream, input: TokenStream) -> TokenStream {
     let gen = impl_object::build_object(args, input, false);
     gen.into()
@@ -380,6 +381,7 @@ pub fn object(args: TokenStream, input: TokenStream) -> TokenStream {
 /// A proc macro for defining a GraphQL object.
 #[doc(hidden)]
 #[proc_macro_attribute]
+#[proc_macro_error]
 pub fn object_internal(args: TokenStream, input: TokenStream) -> TokenStream {
     let gen = impl_object::build_object(args, input, true);
     gen.into()

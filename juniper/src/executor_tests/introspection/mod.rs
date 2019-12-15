@@ -63,13 +63,11 @@ impl Root {
         Sample::One
     }
 
-    #[graphql(arguments(
-        first(description = "The first number",),
-        second(description = "The second number", default = 123,),
-    ))]
-
     /// A sample scalar field on the object
-    fn sample_scalar(first: i32, second: i32) -> Scalar {
+    fn sample_scalar(
+        #[graphql(description = "The first number")] first: i32,
+        #[graphql(description = "The second number", default = 123)] second: i32,
+    ) -> Scalar {
         Scalar(first + second)
     }
 }

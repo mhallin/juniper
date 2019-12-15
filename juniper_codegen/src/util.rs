@@ -1,8 +1,9 @@
+use proc_macro_error::abort;
 use quote::quote;
 use std::collections::HashMap;
 use syn::{
-    parse, parse_quote, punctuated::Punctuated, Attribute, Lit, Meta, MetaList, MetaNameValue,
-    NestedMeta, Token,
+    parse, parse_quote, punctuated::Punctuated, spanned::Spanned, Attribute, Lit, Meta, MetaList,
+    MetaNameValue, NestedMeta, Token,
 };
 
 /// Compares a path to a one-segment string value,
@@ -385,45 +386,81 @@ impl ObjectAttributes {
 
 #[derive(Debug)]
 pub struct FieldAttributeArgument {
-    pub name: syn::Ident,
+    pub name: Option<syn::Ident>,
     pub default: Option<syn::Expr>,
     pub description: Option<syn::LitStr>,
 }
 
-impl parse::Parse for FieldAttributeArgument {
-    fn parse(input: parse::ParseStream) -> parse::Result<Self> {
-        let name = input.parse()?;
+pub fn parse_argument_attrs(pat: &syn::PatType) -> Option<FieldAttributeArgument> {
+    let graphql_attrs = pat
+        .attrs
+        .iter()
+        .filter(|attr| {
+            let name = attr.path.get_ident().map(|i| i.to_string());
+            name == Some("graphql".to_string())
+        })
+        .collect::<Vec<_>>();
 
-        let mut arg = Self {
-            name,
-            default: None,
-            description: None,
-        };
+    let graphql_attr = match graphql_attrs.len() {
+        0 => return None,
+        1 => &graphql_attrs[0],
+        _ => {
+            let last_attr = graphql_attrs.last().unwrap();
+            abort!(
+                last_attr.span(),
+                "You cannot have multiple #[graphql] attributes on the same arg"
+            );
+        }
+    };
 
-        let content;
-        syn::parenthesized!(content in input);
-        while !content.is_empty() {
-            let name = content.parse::<syn::Ident>()?;
-            content.parse::<Token![=]>()?;
+    let name = match &*pat.pat {
+        syn::Pat::Ident(i) => &i.ident,
+        other => abort!(other.span(), "Invalid token for function argument"),
+    };
 
-            match name.to_string().as_str() {
-                "description" => {
-                    arg.description = Some(content.parse()?);
-                }
-                "default" => {
-                    arg.default = Some(content.parse()?);
-                }
-                other => {
-                    return Err(content.error(format!("Invalid attribute argument key {}", other)));
-                }
+    let mut arg = FieldAttributeArgument {
+        name: None,
+        default: None,
+        description: None,
+    };
+
+    graphql_attr
+        .parse_args_with(|content: syn::parse::ParseStream| {
+            parse_field_attr_arg_contents(&content, &mut arg)
+        })
+        .unwrap_or_else(|err| abort!(err.span(), "{}", err));
+
+    Some(arg)
+}
+
+fn parse_field_attr_arg_contents(
+    content: syn::parse::ParseStream,
+    arg: &mut FieldAttributeArgument,
+) -> parse::Result<()> {
+    while !content.is_empty() {
+        let name = content.parse::<syn::Ident>()?;
+        content.parse::<Token![=]>()?;
+
+        match name.to_string().as_str() {
+            "description" => {
+                arg.description = Some(content.parse()?);
             }
-
-            // Discard trailing comma.
-            content.parse::<Token![,]>().ok();
+            "default" => {
+                arg.default = Some(content.parse()?);
+            }
+            "name" => {
+                arg.name = content.parse()?;
+            }
+            other => {
+                return Err(content.error(format!("Invalid attribute argument key `{}`", other)));
+            }
         }
 
-        Ok(arg)
+        // Discard trailing comma.
+        content.parse::<Token![,]>().ok();
     }
+
+    Ok(())
 }
 
 #[derive(PartialEq, Eq, Clone, Copy, Debug)]
@@ -437,7 +474,6 @@ enum FieldAttribute {
     Description(syn::LitStr),
     Deprecation(DeprecationAttr),
     Skip(syn::Ident),
-    Arguments(HashMap<String, FieldAttributeArgument>),
 }
 
 impl parse::Parse for FieldAttribute {
@@ -476,24 +512,12 @@ impl parse::Parse for FieldAttribute {
                 }))
             }
             "skip" => Ok(FieldAttribute::Skip(ident)),
-            "arguments" => {
-                let arg_content;
-                syn::parenthesized!(arg_content in input);
-                let args = Punctuated::<FieldAttributeArgument, Token![,]>::parse_terminated(
-                    &arg_content,
-                )?;
-                let map = args
-                    .into_iter()
-                    .map(|arg| (arg.name.to_string(), arg))
-                    .collect();
-                Ok(FieldAttribute::Arguments(map))
-            }
             other => Err(input.error(format!("Unknown attribute: {}", other))),
         }
     }
 }
 
-#[derive(Default)]
+#[derive(Default, Debug)]
 pub struct FieldAttributes {
     pub name: Option<String>,
     pub description: Option<String>,
@@ -513,6 +537,8 @@ impl parse::Parse for FieldAttributes {
             description: None,
             deprecation: None,
             skip: false,
+            // The arguments get set later via attrs on the argument items themselves in
+            // `parse_argument_attrs`
             arguments: Default::default(),
         };
 
@@ -529,9 +555,6 @@ impl parse::Parse for FieldAttributes {
                 }
                 FieldAttribute::Skip(_) => {
                     output.skip = true;
-                }
-                FieldAttribute::Arguments(args) => {
-                    output.arguments = args;
                 }
             }
         }

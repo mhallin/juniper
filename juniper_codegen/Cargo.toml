@@ -18,6 +18,7 @@ proc-macro = true
 proc-macro2 = "1.0.1"
 syn = { version = "1.0.3", features = ["full", "extra-traits", "parsing"] }
 quote = "1.0.2"
+proc-macro-error = "0.3.4"
 
 [dev-dependencies]
 juniper = { version = "0.14.1", path = "../juniper" }

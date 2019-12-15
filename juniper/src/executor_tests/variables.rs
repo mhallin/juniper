@@ -78,14 +78,9 @@ impl TestType {
         format!("{:?}", input)
     }
 
-    #[graphql(
-        arguments(
-            input(
-                default = "Hello World".to_string(),
-            )
-        )
-    )]
-    fn field_with_default_argument_value(input: String) -> String {
+    fn field_with_default_argument_value(
+        #[graphql(default = "Hello World".to_string())] input: String,
+    ) -> String {
         format!("{:?}", input)
     }
 
@@ -158,7 +153,10 @@ fn inline_complex_input() {
         |result: &Object<DefaultScalarValue>| {
             assert_eq!(
                 result.get_field_value("fieldWithObjectInput"),
-                Some(&Value::scalar(r#"Some(TestInputObject { a: Some("foo"), b: Some([Some("bar")]), c: "baz", d: None })"#)));
+                Some(&Value::scalar(
+                    r#"Some(TestInputObject { a: Some("foo"), b: Some([Some("bar")]), c: "baz", d: None })"#
+                ))
+            );
         },
     );
 }
@@ -170,7 +168,10 @@ fn inline_parse_single_value_to_list() {
         |result: &Object<DefaultScalarValue>| {
             assert_eq!(
                 result.get_field_value("fieldWithObjectInput"),
-                Some(&Value::scalar(r#"Some(TestInputObject { a: Some("foo"), b: Some([Some("bar")]), c: "baz", d: None })"#)));
+                Some(&Value::scalar(
+                    r#"Some(TestInputObject { a: Some("foo"), b: Some([Some("bar")]), c: "baz", d: None })"#
+                ))
+            );
         },
     );
 }
@@ -182,7 +183,10 @@ fn inline_runs_from_input_value_on_scalar() {
         |result: &Object<DefaultScalarValue>| {
             assert_eq!(
                 result.get_field_value("fieldWithObjectInput"),
-                Some(&Value::scalar(r#"Some(TestInputObject { a: None, b: None, c: "baz", d: Some(TestComplexScalar) })"#)));
+                Some(&Value::scalar(
+                    r#"Some(TestInputObject { a: None, b: None, c: "baz", d: Some(TestComplexScalar) })"#
+                ))
+            );
         },
     );
 }
@@ -208,7 +212,10 @@ fn variable_complex_input() {
         |result: &Object<DefaultScalarValue>| {
             assert_eq!(
                 result.get_field_value("fieldWithObjectInput"),
-                Some(&Value::scalar(r#"Some(TestInputObject { a: Some("foo"), b: Some([Some("bar")]), c: "baz", d: None })"#)));
+                Some(&Value::scalar(
+                    r#"Some(TestInputObject { a: Some("foo"), b: Some([Some("bar")]), c: "baz", d: None })"#
+                ))
+            );
         },
     );
 }
@@ -234,7 +241,10 @@ fn variable_parse_single_value_to_list() {
         |result: &Object<DefaultScalarValue>| {
             assert_eq!(
                 result.get_field_value("fieldWithObjectInput"),
-                Some(&Value::scalar(r#"Some(TestInputObject { a: Some("foo"), b: Some([Some("bar")]), c: "baz", d: None })"#)));
+                Some(&Value::scalar(
+                    r#"Some(TestInputObject { a: Some("foo"), b: Some([Some("bar")]), c: "baz", d: None })"#
+                ))
+            );
         },
     );
 }
@@ -259,7 +269,10 @@ fn variable_runs_from_input_value_on_scalar() {
         |result: &Object<DefaultScalarValue>| {
             assert_eq!(
                 result.get_field_value("fieldWithObjectInput"),
-                Some(&Value::scalar(r#"Some(TestInputObject { a: None, b: None, c: "baz", d: Some(TestComplexScalar) })"#)));
+                Some(&Value::scalar(
+                    r#"Some(TestInputObject { a: None, b: None, c: "baz", d: Some(TestComplexScalar) })"#
+                ))
+            );
         },
     );
 }
@@ -306,12 +319,13 @@ fn variable_error_on_incorrect_type() {
 
     let error = crate::execute(query, None, &schema, &vars, &()).unwrap_err();
 
-    assert_eq!(error, ValidationError(vec![
-        RuleError::new(
+    assert_eq!(
+        error,
+        ValidationError(vec![RuleError::new(
             r#"Variable "$input" got invalid value. Expected "TestInputObject", found not an object."#,
             &[SourcePosition::new(8, 0, 8)],
-        ),
-    ]));
+        ),])
+    );
 }
 
 #[test]
@@ -366,16 +380,19 @@ fn variable_multiple_errors_with_nesting() {
 
     let error = crate::execute(query, None, &schema, &vars, &()).unwrap_err();
 
-    assert_eq!(error, ValidationError(vec![
-        RuleError::new(
-            r#"Variable "$input" got invalid value. In field "na": In field "c": Expected "String!", found null."#,
-            &[SourcePosition::new(8, 0, 8)],
-        ),
-        RuleError::new(
-            r#"Variable "$input" got invalid value. In field "nb": Expected "String!", found null."#,
-            &[SourcePosition::new(8, 0, 8)],
-        ),
-    ]));
+    assert_eq!(
+        error,
+        ValidationError(vec![
+            RuleError::new(
+                r#"Variable "$input" got invalid value. In field "na": In field "c": Expected "String!", found null."#,
+                &[SourcePosition::new(8, 0, 8)],
+            ),
+            RuleError::new(
+                r#"Variable "$input" got invalid value. In field "nb": Expected "String!", found null."#,
+                &[SourcePosition::new(8, 0, 8)],
+            ),
+        ])
+    );
 }
 
 #[test]
@@ -733,12 +750,13 @@ fn does_not_allow_lists_of_non_null_to_contain_null() {
 
     let error = crate::execute(query, None, &schema, &vars, &()).unwrap_err();
 
-    assert_eq!(error, ValidationError(vec![
-        RuleError::new(
+    assert_eq!(
+        error,
+        ValidationError(vec![RuleError::new(
             r#"Variable "$input" got invalid value. In element #1: Expected "String!", found null."#,
             &[SourcePosition::new(8, 0, 8)],
-        ),
-    ]));
+        ),])
+    );
 }
 
 #[test]
@@ -759,12 +777,13 @@ fn does_not_allow_non_null_lists_of_non_null_to_contain_null() {
 
     let error = crate::execute(query, None, &schema, &vars, &()).unwrap_err();
 
-    assert_eq!(error, ValidationError(vec![
-        RuleError::new(
+    assert_eq!(
+        error,
+        ValidationError(vec![RuleError::new(
             r#"Variable "$input" got invalid value. In element #1: Expected "String!", found null."#,
             &[SourcePosition::new(8, 0, 8)],
-        ),
-    ]));
+        ),])
+    );
 }
 
 #[test]
@@ -820,12 +839,13 @@ fn does_not_allow_invalid_types_to_be_used_as_values() {
 
     let error = crate::execute(query, None, &schema, &vars, &()).unwrap_err();
 
-    assert_eq!(error, ValidationError(vec![
-        RuleError::new(
+    assert_eq!(
+        error,
+        ValidationError(vec![RuleError::new(
             r#"Variable "$input" expected value of type "TestType!" which cannot be used as an input type."#,
             &[SourcePosition::new(8, 0, 8)],
-        ),
-    ]));
+        ),])
+    );
 }
 
 #[test]
@@ -842,12 +862,13 @@ fn does_not_allow_unknown_types_to_be_used_as_values() {
 
     let error = crate::execute(query, None, &schema, &vars, &()).unwrap_err();
 
-    assert_eq!(error, ValidationError(vec![
-        RuleError::new(
+    assert_eq!(
+        error,
+        ValidationError(vec![RuleError::new(
             r#"Variable "$input" expected value of type "UnknownType!" which cannot be used as an input type."#,
             &[SourcePosition::new(8, 0, 8)],
-        ),
-    ]));
+        ),])
+    );
 }
 
 #[test]

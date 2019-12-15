@@ -135,21 +135,11 @@ struct Person {}
 
 #[juniper::object]
 impl Person {
-    #[graphql(
-        arguments(
-            arg1(
-                // Set a default value which will be injected if not present.
-                // The default can be any valid Rust expression, including a function call, etc.
-                default = true,
-                // Set a description.
-                description = "The first argument..."
-            ),
-            arg2(
-                default = 0,
-            )
-        )
-    )]
-    fn field1(&self, arg1: bool, arg2: i32) -> String {
+    fn field1(
+        &self,
+        #[graphql(default = true, description = "The first argument...")] arg1: bool,
+        #[graphql(default = 0)] arg2: i32,
+    ) -> String {
         format!("{} {}", arg1, arg2)
     }
 }
