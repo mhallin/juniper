@@ -123,7 +123,6 @@ fn impl_scalar_struct(
         where
             Self: Sync,
             Self::TypeInfo: Sync,
-            Self::Context: Sync,
             #scalar: ::juniper::ScalarValue + Send + Sync,
         {
             fn resolve_async<'a>(
@@ -131,7 +130,7 @@ fn impl_scalar_struct(
                 info: &'a Self::TypeInfo,
                 selection_set: Option<&'a [::juniper::Selection<#scalar>]>,
                 executor: &'a ::juniper::Executor<Self::Context, #scalar>,
-            ) -> ::juniper::BoxFuture<'a, ::juniper::ExecutionResult<#scalar>> {
+            ) -> ::juniper::LocalBoxFuture<'a, ::juniper::ExecutionResult<#scalar>> {
                 use ::juniper::futures::future;
                 let v = ::juniper::GraphQLValue::<#scalar>::resolve(self, info, selection_set, executor);
                 Box::pin(future::ready(v))

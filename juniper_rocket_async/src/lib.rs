@@ -123,7 +123,6 @@ where
         MutationT::TypeInfo: Sync,
         SubscriptionT: GraphQLSubscriptionType<S, Context = CtxT>,
         SubscriptionT::TypeInfo: Sync,
-        CtxT: Sync,
         S: Send + Sync,
     {
         let response = self.0.execute(root_node, context).await;

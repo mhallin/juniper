@@ -936,7 +936,7 @@ impl GraphQLTypeDefiniton {
                                 }
                             };
                             use ::juniper::futures::future;
-                            future::FutureExt::boxed(f)
+                            future::FutureExt::boxed_local(f)
                         )
                     } else {
                         quote!(
@@ -1004,7 +1004,7 @@ impl GraphQLTypeDefiniton {
                         field: &'b str,
                         args: &'b ::juniper::Arguments<#scalar>,
                         executor: &'b ::juniper::Executor<Self::Context, #scalar>,
-                    ) -> ::juniper::BoxFuture<'b, ::juniper::ExecutionResult<#scalar>>
+                    ) -> ::juniper::LocalBoxFuture<'b, ::juniper::ExecutionResult<#scalar>>
                         where #scalar: Send + Sync,
                     {
                         use ::juniper::futures::future;
@@ -1271,7 +1271,7 @@ impl GraphQLTypeDefiniton {
                 };
                 quote!(
                     #name => {
-                        ::juniper::futures::FutureExt::boxed(async move {
+                        ::juniper::futures::FutureExt::boxed_local(async move {
                             let res #_type = { #code };
                             let res = ::juniper::IntoFieldResult::<_, #scalar>::into_result(res)?;
                             let executor= executor.as_owned_executor();
@@ -1404,7 +1404,7 @@ impl GraphQLTypeDefiniton {
                                 ::juniper::Value<::juniper::ValuesStream<'res, #scalar>>,
                                 ::juniper::FieldError<#scalar>
                             >
-                        > + Send + 'f
+                        > + 'f
                     >>
                     where
                         's: 'f,
@@ -1549,7 +1549,7 @@ impl GraphQLTypeDefiniton {
                     info: &'a Self::TypeInfo,
                     selection_set: Option<&'a [::juniper::Selection<#scalar>]>,
                     executor: &'a ::juniper::Executor<Self::Context, #scalar>,
-                ) -> ::juniper::BoxFuture<'a, ::juniper::ExecutionResult<#scalar>> {
+                ) -> ::juniper::LocalBoxFuture<'a, ::juniper::ExecutionResult<#scalar>> {
                     use ::juniper::futures::future;
                     let v = ::juniper::GraphQLValue::resolve(self, info, selection_set, executor);
                     Box::pin(future::ready(v))

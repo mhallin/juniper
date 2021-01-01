@@ -545,7 +545,7 @@ impl ToTokens for UnionDefinition {
                     type_name: &str,
                     _: Option<&'b [::juniper::Selection<'b, #scalar>]>,
                     executor: &'b ::juniper::Executor<'b, 'b, Self::Context, #scalar>
-                ) -> ::juniper::BoxFuture<'b, ::juniper::ExecutionResult<#scalar>> {
+                ) -> ::juniper::LocalBoxFuture<'b, ::juniper::ExecutionResult<#scalar>> {
                     let context = executor.context();
                     #( #resolve_into_type_async )*
                     panic!(

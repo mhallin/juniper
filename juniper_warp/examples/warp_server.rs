@@ -6,6 +6,7 @@ use juniper::{
     tests::fixtures::starwars::schema::{Database, Query},
     EmptyMutation, EmptySubscription, RootNode,
 };
+use tokio::task::LocalSet;
 use warp::{http::Response, Filter};
 
 type Schema = RootNode<'static, Query, EmptyMutation<Database>, EmptySubscription<Database>>;
@@ -38,14 +39,17 @@ async fn main() {
     let state = warp::any().map(move || Database::new());
     let graphql_filter = juniper_warp::make_graphql_filter(schema(), state.boxed());
 
-    warp::serve(
-        warp::get()
-            .and(warp::path("graphiql"))
-            .and(juniper_warp::graphiql_filter("/graphql", None))
-            .or(homepage)
-            .or(warp::path("graphql").and(graphql_filter))
-            .with(log),
-    )
-    .run(([127, 0, 0, 1], 8080))
-    .await
+    LocalSet::new()
+        .run_until(
+            warp::serve(
+                warp::get()
+                    .and(warp::path("graphiql"))
+                    .and(juniper_warp::graphiql_filter("/graphql", None))
+                    .or(homepage)
+                    .or(warp::path("graphql").and(graphql_filter))
+                    .with(log),
+            )
+            .run(([127, 0, 0, 1], 8080)),
+        )
+        .await
 }

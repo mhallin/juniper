@@ -19,8 +19,8 @@ use std::{
 
 use futures::{future, stream, FutureExt as _, Stream, StreamExt as _, TryFutureExt as _};
 use juniper::{
-    http::GraphQLRequest, BoxFuture, ExecutionError, ExecutionOutput, GraphQLError,
-    GraphQLSubscriptionType, GraphQLTypeAsync, Object, ScalarValue, SubscriptionConnection,
+    http::GraphQLRequest, ExecutionError, ExecutionOutput, GraphQLError, GraphQLSubscriptionType,
+    GraphQLTypeAsync, LocalBoxFuture, Object, ScalarValue, SubscriptionConnection,
     SubscriptionCoordinator, Value, ValuesStream,
 };
 
@@ -35,7 +35,6 @@ where
     MutationT::TypeInfo: Send + Sync,
     SubscriptionT: GraphQLSubscriptionType<S, Context = CtxT> + Send,
     SubscriptionT::TypeInfo: Send + Sync,
-    CtxT: Sync,
     S: ScalarValue + Send + Sync,
 {
     root_node: juniper::RootNode<'a, QueryT, MutationT, SubscriptionT, S>,
@@ -50,7 +49,6 @@ where
     MutationT::TypeInfo: Send + Sync,
     SubscriptionT: GraphQLSubscriptionType<S, Context = CtxT> + Send,
     SubscriptionT::TypeInfo: Send + Sync,
-    CtxT: Sync,
     S: ScalarValue + Send + Sync,
 {
     /// Builds new [`Coordinator`] with specified `root_node`
@@ -68,7 +66,6 @@ where
     MutationT::TypeInfo: Send + Sync,
     SubscriptionT: GraphQLSubscriptionType<S, Context = CtxT> + Send,
     SubscriptionT::TypeInfo: Send + Sync,
-    CtxT: Sync,
     S: ScalarValue + Send + Sync + 'a,
 {
     type Connection = Connection<'a, S>;
@@ -79,10 +76,10 @@ where
         &'a self,
         req: &'a GraphQLRequest<S>,
         context: &'a CtxT,
-    ) -> BoxFuture<'a, Result<Self::Connection, Self::Error>> {
+    ) -> LocalBoxFuture<'a, Result<Self::Connection, Self::Error>> {
         juniper::http::resolve_into_stream(req, &self.root_node, context)
             .map_ok(|(stream, errors)| Connection::from_stream(stream, errors))
-            .boxed()
+            .boxed_local()
     }
 }
 
@@ -98,7 +95,7 @@ where
 /// [`Value::Object`] - waits while each field of the [`Object`] is returned, then yields the whole object
 /// `Value::Object<Value::Object<_>>` - returns [`Value::Null`] if [`Value::Object`] consists of sub-objects
 pub struct Connection<'a, S> {
-    stream: Pin<Box<dyn Stream<Item = ExecutionOutput<S>> + Send + 'a>>,
+    stream: Pin<Box<dyn Stream<Item = ExecutionOutput<S>> + 'a>>,
 }
 
 impl<'a, S> Connection<'a, S>
@@ -140,7 +137,7 @@ where
 fn whole_responses_stream<'a, S>(
     stream: Value<ValuesStream<'a, S>>,
     errors: Vec<ExecutionError<S>>,
-) -> Pin<Box<dyn Stream<Item = ExecutionOutput<S>> + Send + 'a>>
+) -> Pin<Box<dyn Stream<Item = ExecutionOutput<S>> + 'a>>
 where
     S: ScalarValue + Send + Sync + 'a,
 {

@@ -55,7 +55,6 @@ impl<S, T> GraphQLValueAsync<S> for Option<T>
 where
     T: GraphQLValueAsync<S>,
     T::TypeInfo: Sync,
-    T::Context: Sync,
     S: ScalarValue + Send + Sync,
 {
     fn resolve_async<'a>(
@@ -63,7 +62,7 @@ where
         info: &'a Self::TypeInfo,
         _: Option<&'a [Selection<S>]>,
         executor: &'a Executor<Self::Context, S>,
-    ) -> crate::BoxFuture<'a, ExecutionResult<S>> {
+    ) -> crate::LocalBoxFuture<'a, ExecutionResult<S>> {
         let f = async move {
             let value = match self {
                 Some(obj) => executor.resolve_into_value_async(info, obj).await,
@@ -144,7 +143,6 @@ impl<S, T> GraphQLValueAsync<S> for Vec<T>
 where
     T: GraphQLValueAsync<S>,
     T::TypeInfo: Sync,
-    T::Context: Sync,
     S: ScalarValue + Send + Sync,
 {
     fn resolve_async<'a>(
@@ -152,7 +150,7 @@ where
         info: &'a Self::TypeInfo,
         _: Option<&'a [Selection<S>]>,
         executor: &'a Executor<Self::Context, S>,
-    ) -> crate::BoxFuture<'a, ExecutionResult<S>> {
+    ) -> crate::LocalBoxFuture<'a, ExecutionResult<S>> {
         let f = resolve_into_list_async(executor, info, self.iter());
         Box::pin(f)
     }
@@ -233,7 +231,6 @@ impl<S, T> GraphQLValueAsync<S> for [T]
 where
     T: GraphQLValueAsync<S>,
     T::TypeInfo: Sync,
-    T::Context: Sync,
     S: ScalarValue + Send + Sync,
 {
     fn resolve_async<'a>(
@@ -241,7 +238,7 @@ where
         info: &'a Self::TypeInfo,
         _: Option<&'a [Selection<S>]>,
         executor: &'a Executor<Self::Context, S>,
-    ) -> crate::BoxFuture<'a, ExecutionResult<S>> {
+    ) -> crate::LocalBoxFuture<'a, ExecutionResult<S>> {
         let f = resolve_into_list_async(executor, info, self.iter());
         Box::pin(f)
     }
@@ -295,7 +292,6 @@ where
     I: Iterator<Item = &'t T> + ExactSizeIterator,
     T: GraphQLValueAsync<S> + ?Sized + 't,
     T::TypeInfo: Sync,
-    T::Context: Sync,
     S: ScalarValue + Send + Sync,
 {
     use futures::stream::{FuturesOrdered, StreamExt as _};

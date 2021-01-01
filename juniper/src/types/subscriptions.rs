@@ -5,7 +5,7 @@ use crate::{
     http::GraphQLRequest,
     parser::Spanning,
     types::base::{is_excluded, merge_key_into, GraphQLType, GraphQLValue},
-    Arguments, BoxFuture, DefaultScalarValue, ExecutionError, Executor, FieldError, Object,
+    Arguments, DefaultScalarValue, ExecutionError, Executor, FieldError, LocalBoxFuture, Object,
     ScalarValue, Selection, Value, ValuesStream,
 };
 
@@ -67,7 +67,7 @@ where
         &'a self,
         _: &'a GraphQLRequest<S>,
         _: &'a CtxT,
-    ) -> BoxFuture<'a, Result<Self::Connection, Self::Error>>;
+    ) -> LocalBoxFuture<'a, Result<Self::Connection, Self::Error>>;
 }
 
 /// Single subscription connection.
@@ -98,7 +98,6 @@ pub trait SubscriptionConnection<S>: futures::Stream<Item = ExecutionOutput<S>> 
 pub trait GraphQLSubscriptionValue<S = DefaultScalarValue>: GraphQLValue<S> + Sync
 where
     Self::TypeInfo: Sync,
-    Self::Context: Sync,
     S: ScalarValue + Send + Sync,
 {
     /// Resolves into `Value<ValuesStream>`.
@@ -116,7 +115,7 @@ where
         &'s self,
         info: &'i Self::TypeInfo,
         executor: &'ref_e Executor<'ref_e, 'e, Self::Context, S>,
-    ) -> BoxFuture<'f, Result<Value<ValuesStream<'res, S>>, FieldError<S>>>
+    ) -> LocalBoxFuture<'f, Result<Value<ValuesStream<'res, S>>, FieldError<S>>>
     where
         'e: 'res,
         'i: 'res,
@@ -149,7 +148,7 @@ where
         _: Arguments<'args, S>, // field's arguments
         _: &'ref_e Executor<'ref_e, 'e, Self::Context, S>, // field's executor (subscription's sub-executor
                                                            // with current field's selection set)
-    ) -> BoxFuture<'f, Result<Value<ValuesStream<'res, S>>, FieldError<S>>>
+    ) -> LocalBoxFuture<'f, Result<Value<ValuesStream<'res, S>>, FieldError<S>>>
     where
         's: 'f,
         'i: 'res,
@@ -177,7 +176,7 @@ where
         type_name: &'tn str,      // fragment's type name
         executor: &'ref_e Executor<'ref_e, 'e, Self::Context, S>, // fragment's executor (subscription's sub-executor
                                                                   // with current field's selection set)
-    ) -> BoxFuture<'f, Result<Value<ValuesStream<'res, S>>, FieldError<S>>>
+    ) -> LocalBoxFuture<'f, Result<Value<ValuesStream<'res, S>>, FieldError<S>>>
     where
         'i: 'res,
         'e: 'res,
@@ -207,7 +206,6 @@ crate::sa::assert_obj_safe!(GraphQLSubscriptionValue<Context = (), TypeInfo = ()
 pub trait GraphQLSubscriptionType<S = DefaultScalarValue>:
     GraphQLSubscriptionValue<S> + GraphQLType<S>
 where
-    Self::Context: Sync,
     Self::TypeInfo: Sync,
     S: ScalarValue + Send + Sync,
 {
@@ -216,7 +214,6 @@ where
 impl<S, T> GraphQLSubscriptionType<S> for T
 where
     T: GraphQLSubscriptionValue<S> + GraphQLType<S> + ?Sized,
-    T::Context: Sync,
     T::TypeInfo: Sync,
     S: ScalarValue + Send + Sync,
 {
@@ -229,7 +226,7 @@ pub(crate) fn resolve_selection_set_into_stream<'i, 'inf, 'ref_e, 'e, 'res, 'fut
     instance: &'i T,
     info: &'inf T::TypeInfo,
     executor: &'ref_e Executor<'ref_e, 'e, T::Context, S>,
-) -> BoxFuture<'fut, Value<ValuesStream<'res, S>>>
+) -> LocalBoxFuture<'fut, Value<ValuesStream<'res, S>>>
 where
     'inf: 'res,
     'e: 'res,
@@ -239,7 +236,6 @@ where
     'res: 'fut,
     T: GraphQLSubscriptionValue<S> + ?Sized,
     T::TypeInfo: Sync,
-    T::Context: Sync,
     S: ScalarValue + Send + Sync,
 {
     Box::pin(resolve_selection_set_into_stream_recursive(
@@ -258,7 +254,6 @@ async fn resolve_selection_set_into_stream_recursive<'i, 'inf, 'ref_e, 'e, 'res,
 where
     T: GraphQLSubscriptionValue<S> + ?Sized,
     T::TypeInfo: Sync,
-    T::Context: Sync,
     S: ScalarValue + Send + Sync,
     'inf: 'res,
     'e: 'res,

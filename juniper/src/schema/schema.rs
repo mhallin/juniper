@@ -102,7 +102,7 @@ impl<'a, S, QueryT, MutationT, SubscriptionT> GraphQLValueAsync<S>
 where
     QueryT: GraphQLTypeAsync<S>,
     QueryT::TypeInfo: Sync,
-    QueryT::Context: Sync + 'a,
+    QueryT::Context: 'a,
     MutationT: GraphQLTypeAsync<S, Context = QueryT::Context>,
     MutationT::TypeInfo: Sync,
     SubscriptionT: GraphQLType<S, Context = QueryT::Context> + Sync,
@@ -115,7 +115,7 @@ where
         field_name: &'b str,
         arguments: &'b Arguments<S>,
         executor: &'b Executor<Self::Context, S>,
-    ) -> crate::BoxFuture<'b, ExecutionResult<S>> {
+    ) -> crate::LocalBoxFuture<'b, ExecutionResult<S>> {
         use futures::future::ready;
         match field_name {
             "__schema" | "__type" => {

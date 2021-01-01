@@ -978,7 +978,7 @@ impl Definition {
                     field: &'b str,
                     args: &'b ::juniper::Arguments<#scalar>,
                     executor: &'b ::juniper::Executor<Self::Context, #scalar>,
-                ) -> ::juniper::BoxFuture<'b, ::juniper::ExecutionResult<#scalar>> {
+                ) -> ::juniper::LocalBoxFuture<'b, ::juniper::ExecutionResult<#scalar>> {
                     match field {
                         #( #fields_resolvers )*
                         _ => #no_field_panic,
@@ -991,7 +991,7 @@ impl Definition {
                     type_name: &str,
                     _: Option<&'b [::juniper::Selection<'b, #scalar>]>,
                     executor: &'b ::juniper::Executor<'b, 'b, Self::Context, #scalar>
-                ) -> ::juniper::BoxFuture<'b, ::juniper::ExecutionResult<#scalar>> {
+                ) -> ::juniper::LocalBoxFuture<'b, ::juniper::ExecutionResult<#scalar>> {
                     #( #custom_downcasts )*
                     #regular_downcast
                 }

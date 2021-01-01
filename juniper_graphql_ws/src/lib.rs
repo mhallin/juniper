@@ -33,8 +33,8 @@ use std::{
 use juniper::{
     futures::{
         channel::oneshot,
-        future::{self, BoxFuture, Either, Future, FutureExt, TryFutureExt},
-        stream::{self, BoxStream, SelectAll, StreamExt},
+        future::{self, Either, Future, FutureExt, LocalBoxFuture, TryFutureExt},
+        stream::{self, LocalBoxStream, SelectAll, StreamExt},
         task::{Context, Poll, Waker},
         Sink, Stream,
     },
@@ -43,7 +43,6 @@ use juniper::{
 
 struct ExecutionParams<S: Schema> {
     start_payload: StartPayload<S::ScalarValue>,
-    config: Arc<ConnectionConfig<S::Context>>,
     schema: S,
 }
 
@@ -97,8 +96,8 @@ enum Reaction<S: Schema> {
 
 impl<S: Schema> Reaction<S> {
     /// Converts the reaction into a one-item stream.
-    fn into_stream(self) -> BoxStream<'static, Self> {
-        stream::once(future::ready(self)).boxed()
+    fn into_stream(self) -> LocalBoxStream<'static, Self> {
+        stream::once(future::ready(self)).boxed_local()
     }
 }
 
@@ -151,7 +150,7 @@ impl<S: Schema, I: Init<S::ScalarValue, S::Context>> ConnectionState<S, I> {
     async fn handle_message(
         self,
         msg: ClientMessage<S::ScalarValue>,
-    ) -> (Self, BoxStream<'static, Reaction<S>>) {
+    ) -> (Self, LocalBoxStream<'static, Reaction<S>>) {
         if let ClientMessage::ConnectionTerminate = msg {
             return (self, Reaction::EndStream.into_stream());
         }
@@ -165,7 +164,7 @@ impl<S: Schema, I: Init<S::ScalarValue, S::Context>> ConnectionState<S, I> {
                         let mut s = stream::iter(vec![Reaction::ServerMessage(
                             ServerMessage::ConnectionAck,
                         )])
-                        .boxed();
+                        .boxed_local();
 
                         if keep_alive_interval > Duration::from_secs(0) {
                             s = s
@@ -173,7 +172,7 @@ impl<S: Schema, I: Init<S::ScalarValue, S::Context>> ConnectionState<S, I> {
                                     Reaction::ServerMessage(ServerMessage::ConnectionKeepAlive)
                                         .into_stream(),
                                 )
-                                .boxed();
+                                .boxed_local();
                             s = s
                                 .chain(stream::unfold((), move |_| async move {
                                     tokio::time::delay_for(keep_alive_interval).await;
@@ -182,7 +181,7 @@ impl<S: Schema, I: Init<S::ScalarValue, S::Context>> ConnectionState<S, I> {
                                         (),
                                     ))
                                 }))
-                                .boxed();
+                                .boxed_local();
                         }
 
                         (
@@ -204,10 +203,13 @@ impl<S: Schema, I: Init<S::ScalarValue, S::Context>> ConnectionState<S, I> {
                             }),
                             Reaction::EndStream,
                         ])
-                        .boxed(),
+                        .boxed_local(),
                     ),
                 },
-                _ => (Self::PreInit { init, schema }, stream::empty().boxed()),
+                _ => (
+                    Self::PreInit { init, schema },
+                    stream::empty().boxed_local(),
+                ),
             },
             Self::Active {
                 config,
@@ -219,7 +221,7 @@ impl<S: Schema, I: Init<S::ScalarValue, S::Context>> ConnectionState<S, I> {
                         if stoppers.contains_key(&id) {
                             // We already have an operation with this id, so we can't start a new
                             // one.
-                            stream::empty().boxed()
+                            stream::empty().boxed_local()
                         } else {
                             // Go ahead and prune canceled stoppers before adding a new one.
                             stoppers.retain(|_, tx| !tx.is_canceled());
@@ -238,7 +240,7 @@ impl<S: Schema, I: Init<S::ScalarValue, S::Context>> ConnectionState<S, I> {
                                     }),
                                     Reaction::ServerMessage(ServerMessage::Complete { id }),
                                 ])
-                                .boxed()
+                                .boxed_local()
                             } else {
                                 // Create a channel that we can use to cancel the operation.
                                 let (tx, rx) = oneshot::channel::<()>();
@@ -250,22 +252,25 @@ impl<S: Schema, I: Init<S::ScalarValue, S::Context>> ConnectionState<S, I> {
                                     id.clone(),
                                     ExecutionParams {
                                         start_payload: payload,
-                                        config: config.clone(),
                                         schema: schema.clone(),
                                     },
+                                    config.clone(),
                                 )
                                 .into_stream()
                                 .flatten();
 
                                 // Combine this with our oneshot channel so that the stream ends if the
                                 // oneshot is ever fired.
-                                let s = stream::unfold((rx, s.boxed()), |(rx, mut s)| async move {
-                                    let next = match future::select(rx, s.next()).await {
-                                        Either::Left(_) => None,
-                                        Either::Right((r, rx)) => r.map(|r| (r, rx)),
-                                    };
-                                    next.map(|(r, rx)| (r, (rx, s)))
-                                });
+                                let s = stream::unfold(
+                                    (rx, s.boxed_local()),
+                                    |(rx, mut s)| async move {
+                                        let next = match future::select(rx, s.next()).await {
+                                            Either::Left(_) => None,
+                                            Either::Right((r, rx)) => r.map(|r| (r, rx)),
+                                        };
+                                        next.map(|(r, rx)| (r, (rx, s)))
+                                    },
+                                );
 
                                 // Once the stream ends, send the Complete message.
                                 let s = s.chain(
@@ -273,15 +278,15 @@ impl<S: Schema, I: Init<S::ScalarValue, S::Context>> ConnectionState<S, I> {
                                         .into_stream(),
                                 );
 
-                                s.boxed()
+                                s.boxed_local()
                             }
                         }
                     }
                     ClientMessage::Stop { id } => {
                         stoppers.remove(&id);
-                        stream::empty().boxed()
+                        stream::empty().boxed_local()
                     }
-                    _ => stream::empty().boxed(),
+                    _ => stream::empty().boxed_local(),
                 };
                 (
                     Self::Active {
@@ -292,11 +297,15 @@ impl<S: Schema, I: Init<S::ScalarValue, S::Context>> ConnectionState<S, I> {
                     reactions,
                 )
             }
-            Self::Terminated => (self, stream::empty().boxed()),
+            Self::Terminated => (self, stream::empty().boxed_local()),
         }
     }
 
-    async fn start(id: String, params: ExecutionParams<S>) -> BoxStream<'static, Reaction<S>> {
+    async fn start(
+        id: String,
+        params: ExecutionParams<S>,
+        config: Arc<ConnectionConfig<S::Context>>,
+    ) -> LocalBoxStream<'static, Reaction<S>> {
         // TODO: This could be made more efficient if juniper exposed functionality to allow us to
         // parse and validate the query, determine whether it's a subscription, and then execute
         // it. For now, the query gets parsed and validated twice.
@@ -309,7 +318,7 @@ impl<S: Schema, I: Init<S::ScalarValue, S::Context>> ConnectionState<S, I> {
             params.start_payload.operation_name.as_deref(),
             params.schema.root_node(),
             &params.start_payload.variables,
-            &params.config.context,
+            &config.context,
         )
         .await
         {
@@ -332,7 +341,7 @@ impl<S: Schema, I: Init<S::ScalarValue, S::Context>> ConnectionState<S, I> {
         }
 
         // Try to execute as a subscription.
-        SubscriptionStart::new(id, params.clone()).boxed()
+        SubscriptionStart::new(id, params, config).boxed_local()
     }
 }
 
@@ -361,7 +370,7 @@ enum SubscriptionStartState<S: Schema> {
     /// we're parsing, validating, and getting the actual event stream.
     ResolvingIntoStream {
         id: String,
-        future: BoxFuture<
+        future: LocalBoxFuture<
             'static,
             Result<
                 juniper_subscriptions::Connection<'static, S::ScalarValue>,
@@ -382,14 +391,20 @@ enum SubscriptionStartState<S: Schema> {
 /// SubscriptionStart is the stream for a subscription operation.
 struct SubscriptionStart<S: Schema> {
     params: Arc<ExecutionParams<S>>,
+    config: Arc<ConnectionConfig<S::Context>>,
     state: SubscriptionStartState<S>,
     _marker: PhantomPinned,
 }
 
 impl<S: Schema> SubscriptionStart<S> {
-    fn new(id: String, params: Arc<ExecutionParams<S>>) -> Pin<Box<Self>> {
+    fn new(
+        id: String,
+        params: Arc<ExecutionParams<S>>,
+        config: Arc<ConnectionConfig<S::Context>>,
+    ) -> Pin<Box<Self>> {
         Box::pin(Self {
             params,
+            config,
             state: SubscriptionStartState::Init { id },
             _marker: PhantomPinned,
         })
@@ -400,11 +415,11 @@ impl<S: Schema> Stream for SubscriptionStart<S> {
     type Item = Reaction<S>;
 
     fn poll_next(self: Pin<&mut Self>, cx: &mut Context) -> Poll<Option<Self::Item>> {
-        let (params, state) = unsafe {
+        let (params, config, state) = unsafe {
             // XXX: The execution parameters are referenced by state and must not be modified.
             // Modifying state is fine though.
             let inner = self.get_unchecked_mut();
-            (&inner.params, &mut inner.state)
+            (&inner.params, &inner.config, &mut inner.state)
         };
 
         loop {
@@ -414,6 +429,7 @@ impl<S: Schema> Stream for SubscriptionStart<S> {
                     // parameters, and the returned stream also references them. We can guarantee
                     // that everything has the same lifetime in this self-referential struct.
                     let params = Arc::as_ptr(params);
+                    let config = Arc::as_ptr(config);
                     *state = SubscriptionStartState::ResolvingIntoStream {
                         id: id.clone(),
                         future: unsafe {
@@ -422,13 +438,13 @@ impl<S: Schema> Stream for SubscriptionStart<S> {
                                 (*params).start_payload.operation_name.as_deref(),
                                 (*params).schema.root_node(),
                                 &(*params).start_payload.variables,
-                                &(*params).config.context,
+                                &(*config).context,
                             )
                         }
                         .map_ok(|(stream, errors)| {
                             juniper_subscriptions::Connection::from_stream(stream, errors)
                         })
-                        .boxed(),
+                        .boxed_local(),
                     };
                 }
                 SubscriptionStartState::ResolvingIntoStream {
@@ -486,7 +502,8 @@ enum ConnectionSinkState<S: Schema, I: Init<S::ScalarValue, S::Context>> {
         state: ConnectionState<S, I>,
     },
     HandlingMessage {
-        result: BoxFuture<'static, (ConnectionState<S, I>, BoxStream<'static, Reaction<S>>)>,
+        result:
+            LocalBoxFuture<'static, (ConnectionState<S, I>, LocalBoxStream<'static, Reaction<S>>)>,
     },
     Closed,
 }
@@ -494,7 +511,7 @@ enum ConnectionSinkState<S: Schema, I: Init<S::ScalarValue, S::Context>> {
 /// Implements the graphql-ws protocol. This is a sink for `TryInto<ClientMessage>` and a stream of
 /// `ServerMessage`.
 pub struct Connection<S: Schema, I: Init<S::ScalarValue, S::Context>> {
-    reactions: SelectAll<BoxStream<'static, Reaction<S>>>,
+    reactions: SelectAll<LocalBoxStream<'static, Reaction<S>>>,
     stream_waker: Option<Waker>,
     sink_state: ConnectionSinkState<S, I>,
 }
@@ -557,7 +574,7 @@ where
             ConnectionSinkState::Ready { state } => {
                 match item.try_into() {
                     Ok(msg) => ConnectionSinkState::HandlingMessage {
-                        result: state.handle_message(msg).boxed(),
+                        result: state.handle_message(msg).boxed_local(),
                     },
                     Err(e) => {
                         // If we weren't able to parse the message, send back an error.
@@ -635,7 +652,7 @@ mod test {
     use std::{convert::Infallible, io};
 
     use juniper::{
-        futures::sink::SinkExt,
+        futures::{sink::SinkExt, stream::BoxStream},
         graphql_object, graphql_subscription,
         parser::{ParseError, Spanning, Token},
         DefaultScalarValue, EmptyMutation, FieldError, FieldResult, InputValue, RootNode, Value,

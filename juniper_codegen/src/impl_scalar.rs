@@ -241,7 +241,6 @@ pub fn build_scalar(
         where
             Self: Sync,
             Self::TypeInfo: Sync,
-            Self::Context: Sync,
             #async_generic_type: ::juniper::ScalarValue + Send + Sync,
         {
             fn resolve_async<'a>(
@@ -249,7 +248,7 @@ pub fn build_scalar(
                 info: &'a Self::TypeInfo,
                 selection_set: Option<&'a [::juniper::Selection<#async_generic_type>]>,
                 executor: &'a ::juniper::Executor<Self::Context, #async_generic_type>,
-            ) -> ::juniper::BoxFuture<'a, ::juniper::ExecutionResult<#async_generic_type>> {
+            ) -> ::juniper::LocalBoxFuture<'a, ::juniper::ExecutionResult<#async_generic_type>> {
                 use ::juniper::futures::future;
                 let v = ::juniper::GraphQLValue::resolve(self, info, selection_set, executor);
                 Box::pin(future::ready(v))

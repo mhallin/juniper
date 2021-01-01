@@ -5,7 +5,7 @@ use std::sync::Arc;
 /// just an `Arc<RootNode<...>>` and you should not have to implement it yourself.
 pub trait Schema: Unpin + Clone + Send + Sync + 'static {
     /// The context type.
-    type Context: Unpin + Send + Sync;
+    type Context: Unpin;
 
     /// The scalar value type.
     type ScalarValue: ScalarValue + Send + Sync;
@@ -14,28 +14,31 @@ pub trait Schema: Unpin + Clone + Send + Sync + 'static {
     type QueryTypeInfo: Send + Sync;
 
     /// The query type.
-    type Query: GraphQLTypeAsync<Self::ScalarValue, Context = Self::Context, TypeInfo = Self::QueryTypeInfo>
-        + Send;
+    type Query: GraphQLTypeAsync<
+        Self::ScalarValue,
+        Context = Self::Context,
+        TypeInfo = Self::QueryTypeInfo,
+    > + Send;
 
     /// The mutation type info.
     type MutationTypeInfo: Send + Sync;
 
     /// The mutation type.
     type Mutation: GraphQLTypeAsync<
-            Self::ScalarValue,
-            Context = Self::Context,
-            TypeInfo = Self::MutationTypeInfo,
-        > + Send;
+        Self::ScalarValue,
+        Context = Self::Context,
+        TypeInfo = Self::MutationTypeInfo,
+    > + Send;
 
     /// The subscription type info.
     type SubscriptionTypeInfo: Send + Sync;
 
     /// The subscription type.
     type Subscription: GraphQLSubscriptionType<
-            Self::ScalarValue,
-            Context = Self::Context,
-            TypeInfo = Self::SubscriptionTypeInfo,
-        > + Send;
+        Self::ScalarValue,
+        Context = Self::Context,
+        TypeInfo = Self::SubscriptionTypeInfo,
+    > + Send;
 
     /// Returns the root node for the schema.
     fn root_node(
@@ -58,7 +61,7 @@ where
     MutationT::TypeInfo: Send + Sync,
     SubscriptionT: GraphQLSubscriptionType<S, Context = CtxT> + Send + 'static,
     SubscriptionT::TypeInfo: Send + Sync,
-    CtxT: Unpin + Send + Sync,
+    CtxT: Unpin,
     S: ScalarValue + Send + Sync + 'static;
 
 impl<QueryT, MutationT, SubscriptionT, CtxT, S> Clone
@@ -70,7 +73,7 @@ where
     MutationT::TypeInfo: Send + Sync,
     SubscriptionT: GraphQLSubscriptionType<S, Context = CtxT> + Send + 'static,
     SubscriptionT::TypeInfo: Send + Sync,
-    CtxT: Unpin + Send + Sync,
+    CtxT: Unpin,
     S: ScalarValue + Send + Sync + 'static,
 {
     fn clone(&self) -> Self {
@@ -87,7 +90,7 @@ where
     MutationT::TypeInfo: Send + Sync,
     SubscriptionT: GraphQLSubscriptionType<S, Context = CtxT> + Send + 'static,
     SubscriptionT::TypeInfo: Send + Sync,
-    CtxT: Unpin + Send + Sync + 'static,
+    CtxT: Unpin + 'static,
     S: ScalarValue + Send + Sync + 'static,
 {
     type Context = CtxT;
@@ -113,7 +116,7 @@ where
     MutationT::TypeInfo: Send + Sync,
     SubscriptionT: GraphQLSubscriptionType<S, Context = CtxT> + Send + 'static,
     SubscriptionT::TypeInfo: Send + Sync,
-    CtxT: Unpin + Send + Sync,
+    CtxT: Unpin,
     S: ScalarValue + Send + Sync + 'static,
 {
     type Context = CtxT;

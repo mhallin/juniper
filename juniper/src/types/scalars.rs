@@ -251,7 +251,7 @@ where
         info: &'a Self::TypeInfo,
         selection_set: Option<&'a [Selection<S>]>,
         executor: &'a Executor<Self::Context, S>,
-    ) -> crate::BoxFuture<'a, crate::ExecutionResult<S>> {
+    ) -> crate::LocalBoxFuture<'a, crate::ExecutionResult<S>> {
         use futures::future;
         Box::pin(future::ready(self.resolve(info, selection_set, executor)))
     }
@@ -395,7 +395,6 @@ where
 impl<S, T> GraphQLValueAsync<S> for EmptyMutation<T>
 where
     Self::TypeInfo: Sync,
-    Self::Context: Sync,
     S: ScalarValue + Send + Sync,
 {
 }
@@ -455,7 +454,6 @@ where
 impl<T, S> GraphQLSubscriptionValue<S> for EmptySubscription<T>
 where
     Self::TypeInfo: Sync,
-    Self::Context: Sync,
     S: ScalarValue + Send + Sync + 'static,
 {
 }

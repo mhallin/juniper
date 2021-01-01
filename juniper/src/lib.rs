@@ -264,7 +264,6 @@ pub async fn execute<'a, S, QueryT, MutationT, SubscriptionT>(
 where
     QueryT: GraphQLTypeAsync<S>,
     QueryT::TypeInfo: Sync,
-    QueryT::Context: Sync,
     MutationT: GraphQLTypeAsync<S, Context = QueryT::Context>,
     MutationT::TypeInfo: Sync,
     SubscriptionT: GraphQLType<S, Context = QueryT::Context> + Sync,
@@ -308,7 +307,6 @@ pub async fn resolve_into_stream<'a, S, QueryT, MutationT, SubscriptionT>(
 where
     QueryT: GraphQLTypeAsync<S>,
     QueryT::TypeInfo: Sync,
-    QueryT::Context: Sync,
     MutationT: GraphQLTypeAsync<S, Context = QueryT::Context>,
     MutationT::TypeInfo: Sync,
     SubscriptionT: GraphQLSubscriptionType<S, Context = QueryT::Context>,

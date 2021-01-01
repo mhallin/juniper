@@ -125,7 +125,8 @@ where
 
     let handle_post_json_request = move |context: CtxT, req: GraphQLBatchRequest<S>| {
         let schema = post_json_schema.clone();
-        async move {
+
+        tokio::task::spawn_local(async move {
             let resp = req.execute(&schema, &context).await;
 
             Ok::<_, warp::Rejection>(build_response(
@@ -133,7 +134,8 @@ where
                     .map(|json| (json, resp.is_ok()))
                     .map_err(Into::into),
             ))
-        }
+        })
+        .unwrap_or_else(|e| Err(warp::reject::custom(JoinError(e))))
     };
     let post_json_filter = warp::post()
         .and(context_extractor.clone())
@@ -142,16 +144,20 @@ where
 
     let handle_post_graphql_request = move |context: CtxT, body: Bytes| {
         let schema = post_graphql_schema.clone();
-        async move {
-            let query = str::from_utf8(body.as_ref())
-                .map_err(|e| anyhow!("Request body query is not a valid UTF-8 string: {}", e))?;
-            let req = GraphQLRequest::new(query.into(), None, None);
+        tokio::task::spawn_local(
+            async move {
+                let query = str::from_utf8(body.as_ref()).map_err(|e| {
+                    anyhow!("Request body query is not a valid UTF-8 string: {}", e)
+                })?;
+                let req = GraphQLRequest::new(query.into(), None, None);
 
-            let resp = req.execute(&schema, &context).await;
+                let resp = req.execute(&schema, &context).await;
 
-            Ok((serde_json::to_vec(&resp)?, resp.is_ok()))
-        }
-        .then(|res| async { Ok::<_, warp::Rejection>(build_response(res)) })
+                Ok((serde_json::to_vec(&resp)?, resp.is_ok()))
+            }
+            .then(|res| async { Ok::<_, warp::Rejection>(build_response(res)) }),
+        )
+        .unwrap_or_else(|e| Err(warp::reject::custom(JoinError(e))))
     };
     let post_graphql_filter = warp::post()
         .and(context_extractor.clone())
@@ -160,21 +166,25 @@ where
 
     let handle_get_request = move |context: CtxT, mut qry: HashMap<String, String>| {
         let schema = schema.clone();
-        async move {
-            let req = GraphQLRequest::new(
-                qry.remove("query")
-                    .ok_or_else(|| anyhow!("Missing GraphQL query string in query parameters"))?,
-                qry.remove("operation_name"),
-                qry.remove("variables")
-                    .map(|vs| serde_json::from_str(&vs))
-                    .transpose()?,
-            );
+        tokio::task::spawn_local(
+            async move {
+                let req = GraphQLRequest::new(
+                    qry.remove("query").ok_or_else(|| {
+                        anyhow!("Missing GraphQL query string in query parameters")
+                    })?,
+                    qry.remove("operation_name"),
+                    qry.remove("variables")
+                        .map(|vs| serde_json::from_str(&vs))
+                        .transpose()?,
+                );
 
-            let resp = req.execute(&schema, &context).await;
+                let resp = req.execute(&schema, &context).await;
 
-            Ok((serde_json::to_vec(&resp)?, resp.is_ok()))
-        }
-        .then(|res| async move { Ok::<_, warp::Rejection>(build_response(res)) })
+                Ok((serde_json::to_vec(&resp)?, resp.is_ok()))
+            }
+            .then(|res| async move { Ok::<_, warp::Rejection>(build_response(res)) }),
+        )
+        .unwrap_or_else(|e| Err(warp::reject::custom(JoinError(e))))
     };
     let get_filter = warp::get()
         .and(context_extractor)
@@ -455,7 +465,7 @@ pub mod subscriptions {
         Mutation::TypeInfo: Send + Sync,
         Subscription: GraphQLSubscriptionType<S, Context = CtxT> + Send + 'static,
         Subscription::TypeInfo: Send + Sync,
-        CtxT: Unpin + Send + Sync + 'static,
+        CtxT: Unpin + 'static,
         S: ScalarValue + Send + Sync + 'static,
         I: Init<S, CtxT> + Send,
     {

@@ -5,7 +5,7 @@ use crate::{
     value::{DefaultScalarValue, Object, ScalarValue, Value},
 };
 
-use crate::BoxFuture;
+use crate::LocalBoxFuture;
 
 use super::base::{is_excluded, merge_key_into, Arguments, GraphQLType, GraphQLValue};
 
@@ -16,7 +16,6 @@ use super::base::{is_excluded, merge_key_into, Arguments, GraphQLType, GraphQLVa
 pub trait GraphQLValueAsync<S = DefaultScalarValue>: GraphQLValue<S> + Sync
 where
     Self::TypeInfo: Sync,
-    Self::Context: Sync,
     S: ScalarValue + Send + Sync,
 {
     /// Resolves the value of a single field on this [`GraphQLValueAsync`].
@@ -37,7 +36,7 @@ where
         _field_name: &'a str,
         _arguments: &'a Arguments<S>,
         _executor: &'a Executor<Self::Context, S>,
-    ) -> BoxFuture<'a, ExecutionResult<S>> {
+    ) -> LocalBoxFuture<'a, ExecutionResult<S>> {
         panic!(
             "GraphQLValueAsync::resolve_field_async() must be implemented by objects and \
              interfaces",
@@ -63,7 +62,7 @@ where
         type_name: &str,
         selection_set: Option<&'a [Selection<'a, S>]>,
         executor: &'a Executor<'a, 'a, Self::Context, S>,
-    ) -> BoxFuture<'a, ExecutionResult<S>> {
+    ) -> LocalBoxFuture<'a, ExecutionResult<S>> {
         if self.type_name(info).unwrap() == type_name {
             self.resolve_async(info, selection_set, executor)
         } else {
@@ -98,7 +97,7 @@ where
         info: &'a Self::TypeInfo,
         selection_set: Option<&'a [Selection<S>]>,
         executor: &'a Executor<Self::Context, S>,
-    ) -> BoxFuture<'a, ExecutionResult<S>> {
+    ) -> LocalBoxFuture<'a, ExecutionResult<S>> {
         if let Some(sel) = selection_set {
             Box::pin(async move {
                 Ok(resolve_selection_set_into_async(self, info, sel, executor).await)
@@ -125,7 +124,6 @@ pub type DynGraphQLValueAsync<S, C, TI> =
 /// doesn't require manual or code-generated implementation.
 pub trait GraphQLTypeAsync<S = DefaultScalarValue>: GraphQLValueAsync<S> + GraphQLType<S>
 where
-    Self::Context: Sync,
     Self::TypeInfo: Sync,
     S: ScalarValue + Send + Sync,
 {
@@ -134,7 +132,6 @@ where
 impl<S, T> GraphQLTypeAsync<S> for T
 where
     T: GraphQLValueAsync<S> + GraphQLType<S> + ?Sized,
-    T::Context: Sync,
     T::TypeInfo: Sync,
     S: ScalarValue + Send + Sync,
 {
@@ -147,11 +144,10 @@ fn resolve_selection_set_into_async<'a, 'e, T, S>(
     info: &'a T::TypeInfo,
     selection_set: &'e [Selection<'e, S>],
     executor: &'e Executor<'e, 'e, T::Context, S>,
-) -> BoxFuture<'a, Value<S>>
+) -> LocalBoxFuture<'a, Value<S>>
 where
     T: GraphQLValueAsync<S> + ?Sized,
     T::TypeInfo: Sync,
-    T::Context: Sync,
     S: ScalarValue + Send + Sync,
     'e: 'a,
 {
@@ -182,7 +178,6 @@ pub(crate) async fn resolve_selection_set_into_async_recursive<'a, T, S>(
 where
     T: GraphQLValueAsync<S> + ?Sized,
     T::TypeInfo: Sync,
-    T::Context: Sync,
     S: ScalarValue + Send + Sync,
 {
     use futures::stream::{FuturesOrdered, StreamExt as _};

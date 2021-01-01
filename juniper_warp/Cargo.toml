@@ -20,7 +20,7 @@ juniper_graphql_ws = { version = "0.2.1", path = "../juniper_graphql_ws", option
 serde = { version = "1.0.75", features = ["derive"] }
 serde_json = "1.0.24"
 thiserror = "1.0"
-tokio = { version = "0.2", features = ["blocking", "rt-core"] }
+tokio = { version = "0.2", features = ["blocking", "rt-core", "rt-util"] }
 warp = "0.2"
 
 [dev-dependencies]
@@ -28,5 +28,5 @@ env_logger = "0.8"
 juniper = { version = "0.15.1", path = "../juniper", features = ["expose-test-schema"] }
 log = "0.4"
 percent-encoding = "2.1"
-tokio = { version = "0.2", features = ["blocking", "macros", "rt-core"] }
+tokio = { version = "0.2", features = ["blocking", "macros", "rt-core", "rt-util"] }
 url = "2"

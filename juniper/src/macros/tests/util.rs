@@ -3,7 +3,7 @@ use crate::{DefaultScalarValue, GraphQLType, GraphQLTypeAsync, RootNode, Value, 
 pub async fn run_query<Query, Mutation, Subscription>(query: &str) -> Value
 where
     Query: GraphQLTypeAsync<DefaultScalarValue, TypeInfo = ()> + Default,
-    Query::Context: Default + Sync,
+    Query::Context: Default,
     Mutation:
         GraphQLTypeAsync<DefaultScalarValue, TypeInfo = (), Context = Query::Context> + Default,
     Subscription:
@@ -31,7 +31,7 @@ where
 pub async fn run_info_query<Query, Mutation, Subscription>(type_name: &str) -> Value
 where
     Query: GraphQLTypeAsync<DefaultScalarValue, TypeInfo = ()> + Default,
-    Query::Context: Default + Sync,
+    Query::Context: Default,
     Mutation:
         GraphQLTypeAsync<DefaultScalarValue, TypeInfo = (), Context = Query::Context> + Default,
     Subscription:

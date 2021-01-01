@@ -107,7 +107,6 @@ where
     where
         QueryT: GraphQLTypeAsync<S>,
         QueryT::TypeInfo: Sync,
-        QueryT::Context: Sync,
         MutationT: GraphQLTypeAsync<S, Context = QueryT::Context>,
         MutationT::TypeInfo: Sync,
         SubscriptionT: GraphQLType<S, Context = QueryT::Context> + Sync,
@@ -136,7 +135,6 @@ where
     'ctx: 'a,
     QueryT: GraphQLTypeAsync<S>,
     QueryT::TypeInfo: Sync,
-    QueryT::Context: Sync,
     MutationT: GraphQLTypeAsync<S, Context = QueryT::Context>,
     MutationT::TypeInfo: Sync,
     SubscriptionT: GraphQLSubscriptionType<S, Context = QueryT::Context>,
@@ -291,7 +289,6 @@ where
     where
         QueryT: GraphQLTypeAsync<S>,
         QueryT::TypeInfo: Sync,
-        QueryT::Context: Sync,
         MutationT: GraphQLTypeAsync<S, Context = QueryT::Context>,
         MutationT::TypeInfo: Sync,
         SubscriptionT: GraphQLSubscriptionType<S, Context = QueryT::Context>,

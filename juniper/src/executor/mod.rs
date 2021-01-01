@@ -238,7 +238,7 @@ pub type ExecutionResult<S = DefaultScalarValue> = Result<Value<S>, FieldError<S
 
 /// Boxed `Stream` yielding `Result<Value<S>, ExecutionError<S>>`
 pub type ValuesStream<'a, S = DefaultScalarValue> =
-    std::pin::Pin<Box<dyn Stream<Item = Result<Value<S>, ExecutionError<S>>> + Send + 'a>>;
+    std::pin::Pin<Box<dyn Stream<Item = Result<Value<S>, ExecutionError<S>>> + 'a>>;
 
 /// The map of variables used for substitution during query execution
 pub type Variables<S = DefaultScalarValue> = HashMap<String, InputValue<S>>;
@@ -412,7 +412,6 @@ where
         'a: 'res,
         T: GraphQLSubscriptionValue<S, Context = CtxT> + ?Sized,
         T::TypeInfo: Sync,
-        CtxT: Sync,
         S: Send + Sync,
     {
         self.subscribe(info, value).await.unwrap_or_else(|e| {
@@ -433,7 +432,6 @@ where
         'a: 'res,
         T: GraphQLSubscriptionValue<S, Context = CtxT> + ?Sized,
         T::TypeInfo: Sync,
-        CtxT: Sync,
         S: Send + Sync,
     {
         value.resolve_into_stream(info, self).await
@@ -462,7 +460,6 @@ where
     where
         T: GraphQLValueAsync<S, Context = CtxT> + ?Sized,
         T::TypeInfo: Sync,
-        CtxT: Sync,
         S: Send + Sync,
     {
         value
@@ -479,7 +476,7 @@ where
     where
         T: GraphQLValueAsync<S, Context = NewCtxT> + ?Sized,
         T::TypeInfo: Sync,
-        NewCtxT: FromContext<CtxT> + Sync,
+        NewCtxT: FromContext<CtxT>,
         S: Send + Sync,
     {
         let e = self.replaced_context(<NewCtxT as FromContext<CtxT>>::from(self.context));
@@ -506,7 +503,6 @@ where
     where
         T: GraphQLValueAsync<S, Context = CtxT> + ?Sized,
         T::TypeInfo: Sync,
-        CtxT: Sync,
         S: Send + Sync,
     {
         self.resolve_async(info, value).await.unwrap_or_else(|e| {
@@ -887,7 +883,6 @@ pub async fn execute_validated_query_async<'a, 'b, QueryT, MutationT, Subscripti
 where
     QueryT: GraphQLTypeAsync<S>,
     QueryT::TypeInfo: Sync,
-    QueryT::Context: Sync,
     MutationT: GraphQLTypeAsync<S, Context = QueryT::Context>,
     MutationT::TypeInfo: Sync,
     SubscriptionT: GraphQLType<S, Context = QueryT::Context> + Sync,
@@ -1033,7 +1028,7 @@ where
     'op: 'd,
     QueryT: GraphQLTypeAsync<S>,
     QueryT::TypeInfo: Sync,
-    QueryT::Context: Sync + 'r,
+    QueryT::Context: 'r,
     MutationT: GraphQLTypeAsync<S, Context = QueryT::Context>,
     MutationT::TypeInfo: Sync,
     SubscriptionT: GraphQLSubscriptionType<S, Context = QueryT::Context>,

@@ -8,8 +8,9 @@ use juniper::{
     tests::fixtures::starwars::schema::{Database, Query},
     EmptyMutation, EmptySubscription, RootNode,
 };
+use tokio::task::LocalSet;
 
-#[tokio::main]
+#[tokio::main(basic_scheduler)]
 async fn main() {
     pretty_env_logger::init();
 
@@ -47,10 +48,30 @@ async fn main() {
         }
     });
 
-    let server = Server::bind(&addr).serve(new_service);
+    let server = Server::bind(&addr).executor(LocalExec).serve(new_service);
     println!("Listening on http://{}", addr);
 
-    if let Err(e) = server.await {
-        eprintln!("server error: {}", e)
+    LocalSet::new()
+        .run_until(async {
+            if let Err(e) = server.await {
+                eprintln!("server error: {}", e)
+            }
+        })
+        .await
+}
+
+// Taken from https://github.com/hyperium/hyper/blob/8861f9a7867216c81ea14ac6224c11a1303e7761/examples/single_threaded.rs
+// Since the Server needs to spawn some background tasks, we needed
+// to configure an Executor that can spawn !Send futures...
+#[derive(Clone, Copy, Debug)]
+struct LocalExec;
+
+impl<F> hyper::rt::Executor<F> for LocalExec
+where
+    F: std::future::Future + 'static, // not requiring `Send`
+{
+    fn execute(&self, fut: F) {
+        // This will spawn into the currently running `LocalSet`.
+        tokio::task::spawn_local(fut);
     }
 }

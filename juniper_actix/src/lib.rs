@@ -95,7 +95,6 @@ where
     Mutation::TypeInfo: Sync,
     Subscription: juniper::GraphQLSubscriptionType<S, Context = CtxT>,
     Subscription::TypeInfo: Sync,
-    CtxT: Sync,
     S: ScalarValue + Send + Sync,
 {
     match *req.method() {
@@ -119,7 +118,6 @@ where
     Mutation::TypeInfo: Sync,
     Subscription: juniper::GraphQLSubscriptionType<S, Context = CtxT>,
     Subscription::TypeInfo: Sync,
-    CtxT: Sync,
     S: ScalarValue + Send + Sync,
 {
     let get_req = web::Query::<GetGraphQLRequest>::from_query(req.query_string())?;
@@ -149,7 +147,6 @@ where
     Mutation::TypeInfo: Sync,
     Subscription: juniper::GraphQLSubscriptionType<S, Context = CtxT>,
     Subscription::TypeInfo: Sync,
-    CtxT: Sync,
     S: ScalarValue + Send + Sync,
 {
     let content_type_header = req
@@ -262,7 +259,7 @@ pub mod subscriptions {
         Mutation::TypeInfo: Send + Sync,
         Subscription: GraphQLSubscriptionType<S, Context = CtxT> + Send + 'static,
         Subscription::TypeInfo: Send + Sync,
-        CtxT: Unpin + Send + Sync + 'static,
+        CtxT: Unpin + 'static,
         S: ScalarValue + Send + Sync + 'static,
         I: Init<S, CtxT> + Send,
     {
@@ -304,7 +301,7 @@ pub mod subscriptions {
         Mutation::TypeInfo: Send + Sync,
         Subscription: GraphQLSubscriptionType<S, Context = CtxT> + Send + 'static,
         Subscription::TypeInfo: Send + Sync,
-        CtxT: Unpin + Send + Sync + 'static,
+        CtxT: Unpin + 'static,
         S: ScalarValue + Send + Sync + 'static,
         I: Init<S, CtxT> + Send,
     {
@@ -323,7 +320,7 @@ pub mod subscriptions {
         Mutation::TypeInfo: Send + Sync,
         Subscription: GraphQLSubscriptionType<S, Context = CtxT> + Send + 'static,
         Subscription::TypeInfo: Send + Sync,
-        CtxT: Unpin + Send + Sync + 'static,
+        CtxT: Unpin + 'static,
         S: ScalarValue + Send + Sync + 'static,
         I: Init<S, CtxT> + Send,
     {
@@ -361,7 +358,7 @@ pub mod subscriptions {
         Mutation::TypeInfo: Send + Sync,
         Subscription: GraphQLSubscriptionType<S, Context = CtxT> + Send + 'static,
         Subscription::TypeInfo: Send + Sync,
-        CtxT: Unpin + Send + Sync + 'static,
+        CtxT: Unpin + 'static,
         S: ScalarValue + Send + Sync + 'static,
         I: Init<S, CtxT> + Send,
     {
@@ -399,7 +396,7 @@ pub mod subscriptions {
         Mutation::TypeInfo: Send + Sync,
         Subscription: GraphQLSubscriptionType<S, Context = CtxT> + Send + 'static,
         Subscription::TypeInfo: Send + Sync,
-        CtxT: Unpin + Send + Sync + 'static,
+        CtxT: Unpin + 'static,
         S: ScalarValue + Send + Sync + 'static,
         I: Init<S, CtxT> + Send,
     {

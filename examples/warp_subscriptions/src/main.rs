@@ -2,7 +2,7 @@
 
 use std::{env, pin::Pin, sync::Arc, time::Duration};
 
-use futures::{FutureExt as _, Stream};
+use futures::{FutureExt as _, Stream, TryFutureExt};
 use juniper::{
     graphql_object, graphql_subscription, DefaultScalarValue, EmptyMutation, FieldError,
     GraphQLEnum, RootNode,
@@ -162,14 +162,17 @@ async fn main() {
         .and(warp::ws())
         .map(move |ws: warp::ws::Ws| {
             let root_node = root_node.clone();
-            ws.on_upgrade(move |websocket| async move {
-                serve_graphql_ws(websocket, root_node, ConnectionConfig::new(Context {}))
-                    .map(|r| {
-                        if let Err(e) = r {
-                            println!("Websocket error: {}", e);
-                        }
-                    })
-                    .await
+            ws.on_upgrade(move |websocket| {
+                tokio::task::spawn_local(async move {
+                    serve_graphql_ws(websocket, root_node, ConnectionConfig::new(Context {}))
+                        .map(|r| {
+                            if let Err(e) = r {
+                                println!("Websocket error: {}", e);
+                            }
+                        })
+                        .await
+                })
+                .unwrap_or_else(|_| panic!("Failed to join handler"))
             })
         }))
     .map(|reply| {

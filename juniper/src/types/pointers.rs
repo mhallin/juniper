@@ -9,7 +9,7 @@ use crate::{
         base::{Arguments, GraphQLType, GraphQLValue},
     },
     value::ScalarValue,
-    BoxFuture,
+    LocalBoxFuture,
 };
 
 impl<S, T> GraphQLType<S> for Box<T>
@@ -75,7 +75,6 @@ impl<S, T> GraphQLValueAsync<S> for Box<T>
 where
     T: GraphQLValueAsync<S> + ?Sized,
     T::TypeInfo: Sync,
-    T::Context: Sync,
     S: ScalarValue + Send + Sync,
 {
     fn resolve_async<'a>(
@@ -83,7 +82,7 @@ where
         info: &'a Self::TypeInfo,
         selection_set: Option<&'a [Selection<S>]>,
         executor: &'a Executor<Self::Context, S>,
-    ) -> BoxFuture<'a, ExecutionResult<S>> {
+    ) -> LocalBoxFuture<'a, ExecutionResult<S>> {
         (**self).resolve_async(info, selection_set, executor)
     }
 }
@@ -174,7 +173,6 @@ impl<'e, S, T> GraphQLValueAsync<S> for &'e T
 where
     T: GraphQLValueAsync<S> + ?Sized,
     T::TypeInfo: Sync,
-    T::Context: Sync,
     S: ScalarValue + Send + Sync,
 {
     fn resolve_field_async<'b>(
@@ -183,7 +181,7 @@ where
         field_name: &'b str,
         arguments: &'b Arguments<S>,
         executor: &'b Executor<Self::Context, S>,
-    ) -> BoxFuture<'b, ExecutionResult<S>> {
+    ) -> LocalBoxFuture<'b, ExecutionResult<S>> {
         (**self).resolve_field_async(info, field_name, arguments, executor)
     }
 
@@ -192,7 +190,7 @@ where
         info: &'a Self::TypeInfo,
         selection_set: Option<&'a [Selection<S>]>,
         executor: &'a Executor<Self::Context, S>,
-    ) -> BoxFuture<'a, ExecutionResult<S>> {
+    ) -> LocalBoxFuture<'a, ExecutionResult<S>> {
         (**self).resolve_async(info, selection_set, executor)
     }
 }
@@ -270,7 +268,6 @@ impl<'e, S, T> GraphQLValueAsync<S> for Arc<T>
 where
     T: GraphQLValueAsync<S> + Send + ?Sized,
     T::TypeInfo: Sync,
-    T::Context: Sync,
     S: ScalarValue + Send + Sync,
 {
     fn resolve_async<'a>(
@@ -278,7 +275,7 @@ where
         info: &'a Self::TypeInfo,
         selection_set: Option<&'a [Selection<S>]>,
         executor: &'a Executor<Self::Context, S>,
-    ) -> BoxFuture<'a, ExecutionResult<S>> {
+    ) -> LocalBoxFuture<'a, ExecutionResult<S>> {
         (**self).resolve_async(info, selection_set, executor)
     }
 }
