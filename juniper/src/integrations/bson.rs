@@ -18,7 +18,7 @@ where
 
     fn from_input_value(v: &InputValue) -> Option<ObjectId> {
         v.as_string_value()
-            .and_then(|s| ObjectId::with_string(s).ok())
+            .and_then(|s| ObjectId::parse_str(s).ok())
     }
 
     fn from_str<'a>(value: ScalarToken<'a>) -> ParseScalarResult<'a, S> {
@@ -36,13 +36,13 @@ where
     S: ScalarValue,
 {
     fn resolve(&self) -> Value {
-        Value::scalar((*self).to_rfc3339())
+        Value::scalar(DateTime::from(*self).to_rfc3339())
     }
 
     fn from_input_value(v: &InputValue) -> Option<UtcDateTime> {
         v.as_string_value()
             .and_then(|s| (s.parse::<DateTime<Utc>>().ok()))
-            .map(UtcDateTime)
+            .map(UtcDateTime::from)
     }
 
     fn from_str<'a>(value: ScalarToken<'a>) -> ParseScalarResult<'a, S> {
@@ -66,7 +66,7 @@ mod test {
         let input: InputValue<DefaultScalarValue> = InputValue::scalar(raw.to_string());
 
         let parsed: ObjectId = crate::FromInputValue::from_input_value(&input).unwrap();
-        let id = ObjectId::with_string(raw).unwrap();
+        let id = ObjectId::parse_str(raw).unwrap();
 
         assert_eq!(parsed, id);
     }
@@ -77,7 +77,7 @@ mod test {
         let input: InputValue<DefaultScalarValue> = InputValue::scalar(raw.to_string());
 
         let parsed: UtcDateTime = crate::FromInputValue::from_input_value(&input).unwrap();
-        let date_time = UtcDateTime(
+        let date_time = UtcDateTime::from(
             DateTime::parse_from_rfc3339(raw)
                 .unwrap()
                 .with_timezone(&Utc),
