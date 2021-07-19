@@ -99,7 +99,7 @@ async fn does_not_accept_string_literals() {
     assert_eq!(
         error,
         ValidationError(vec![RuleError::new(
-            r#"Invalid value for argument "color", expected type "Color!""#,
+            r#"Error for argument "color": Invalid value ""RED"" for enum "Color""#,
             &[SourcePosition::new(18, 0, 18)],
         )])
     );

@@ -1,7 +1,7 @@
 use crate::{
     ast::VariableDefinition,
     parser::Spanning,
-    types::utilities::is_valid_literal_value,
+    types::utilities::validate_literal_value,
     validation::{ValidatorContext, Visitor},
     value::ScalarValue,
 };
@@ -35,9 +35,15 @@ where
             } else {
                 let meta_type = ctx.schema.make_type(&var_def.var_type.item);
 
-                if !is_valid_literal_value(ctx.schema, &meta_type, var_value) {
+                if let Some(error_message) =
+                    validate_literal_value(ctx.schema, &meta_type, var_value)
+                {
                     ctx.report_error(
-                        &type_error_message(var_name.item, &format!("{}", var_def.var_type.item)),
+                        &type_error_message(
+                            var_name.item,
+                            &format!("{}", var_def.var_type.item),
+                            &error_message,
+                        ),
                         &[*start],
                     );
                 }
@@ -46,10 +52,10 @@ where
     }
 }
 
-fn type_error_message(arg_name: &str, type_name: &str) -> String {
+fn type_error_message(arg_name: &str, type_name: &str, reason: &str) -> String {
     format!(
-        "Invalid default value for argument \"{}\", expected type \"{}\"",
-        arg_name, type_name
+        "Invalid default value for argument \"{}\", expected type \"{}\".  Reason: {}",
+        arg_name, type_name, reason
     )
 }
 
@@ -66,6 +72,7 @@ mod tests {
 
     use crate::{
         parser::SourcePosition,
+        types::utilities,
         validation::{expect_fails_rule, expect_passes_rule, RuleError},
         value::DefaultScalarValue,
     };
@@ -147,15 +154,27 @@ mod tests {
         "#,
             &[
                 RuleError::new(
-                    &type_error_message("a", "Int"),
+                    &type_error_message(
+                        "a",
+                        "Int",
+                        &utilities::type_error_message("\"one\"", "Int"),
+                    ),
                     &[SourcePosition::new(61, 2, 22)],
                 ),
                 RuleError::new(
-                    &type_error_message("b", "String"),
+                    &type_error_message(
+                        "b",
+                        "String",
+                        &utilities::type_error_message("4", "String"),
+                    ),
                     &[SourcePosition::new(93, 3, 25)],
                 ),
                 RuleError::new(
-                    &type_error_message("c", "ComplexInput"),
+                    &type_error_message(
+                        "c",
+                        "ComplexInput",
+                        &utilities::type_error_message("\"notverycomplex\"", "ComplexInput"),
+                    ),
                     &[SourcePosition::new(127, 4, 31)],
                 ),
             ],
@@ -172,7 +191,11 @@ mod tests {
           }
         "#,
             &[RuleError::new(
-                &type_error_message("a", "ComplexInput"),
+                &type_error_message(
+                    "a",
+                    "ComplexInput",
+                    &utilities::missing_field_error_message("ComplexInput", "\"requiredField\""),
+                ),
                 &[SourcePosition::new(57, 1, 56)],
             )],
         );
@@ -188,7 +211,11 @@ mod tests {
           }
         "#,
             &[RuleError::new(
-                &type_error_message("a", "[String]"),
+                &type_error_message(
+                    "a",
+                    "[String]",
+                    &utilities::type_error_message("2", "String"),
+                ),
                 &[SourcePosition::new(44, 1, 43)],
             )],
         );
